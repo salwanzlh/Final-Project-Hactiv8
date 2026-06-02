@@ -13,7 +13,7 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.services.session import session_manager
 from backend.services.stt import transcribe_audio
-from backend.services.ai import analyze_conversation
+from backend.services.ai import analyze_conversation, _TAHAP_TO_STAGE
 from backend.services.tts import synthesize
 from backend.services.speaker_classifier import classify_speaker
 from backend.services.rag import search_conversation_patterns
@@ -278,9 +278,10 @@ async def _rag_fallback_hint(session_id: str, context) -> None:
                 + (f" Gali dimensi {dim}." if dim else "")
             )
 
-    # 2. RAG sequence patterns
+    # 2. RAG sequence patterns — filter by stage agar relevan dengan tahap percakapan saat ini
     if not question:
-        patterns  = await search_conversation_patterns(recent_text, top_k=5)
+        current_stage = _TAHAP_TO_STAGE.get(context.current_tahap, None)
+        patterns  = await search_conversation_patterns(recent_text, top_k=5, stage=current_stage)
         preferred = [
             p for p in patterns
             if p.get("outcome") != "question_deflected"

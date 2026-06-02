@@ -23,6 +23,7 @@ class ConversationContext(BaseModel):
     asked_questions: list[str] = []       # pertanyaan yang sudah pernah disuggest ke sales
     blocked_dimensions: list[str] = []    # dimensi yang customer hindari — jangan tanya lagi
     last_speaker: Literal["sales", "customer", "unknown"] = "unknown"
+    current_tahap: str = "PEMBUKA"        # tahap terakhir yang dideteksi LLM
 
 
 # ── Mobil ────────────────────────────────────────────────

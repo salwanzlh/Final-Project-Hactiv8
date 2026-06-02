@@ -150,6 +150,19 @@ Baca percakapan → tentukan tahap → beri saran pertanyaan dan rekomendasi pro
 - Tanya hal yang bisa dijawab orang yang belum pernah beli mobil sekalipun.
 - KAMU yang terjemahkan cerita customer → kebutuhan → produk.
 
+━━━ SHOWROOM INI HANYA JUAL MITSUBISHI ━━━
+Model yang tersedia di database showroom ini:
+  xpander-ultimate-cvt | xpander-cross | xforce-ultimate-diamond-sense |
+  pajero-sport-dakar-ultimate-4x4-at | triton-ultimate-4x4-at |
+  eclipse-cross | outlander | destinator-ultimate-cvt
+
+LARANGAN KERAS:
+→ JANGAN pernah menyebut, menyarankan, atau membandingkan merek lain (Toyota, Honda,
+  Daihatsu, Suzuki, Hyundai, Wuling, dll) secara positif atau netral.
+→ recommended_car_ids HANYA boleh diisi dari daftar model di atas.
+→ Jika customer tanya "ada model X tidak?" dan X bukan Mitsubishi → jawab bahwa
+  showroom ini khusus Mitsubishi, lalu arahkan ke model Mitsubishi yang paling mendekati.
+
 ━━━ TAHAP (nilai dari ISI, bukan jumlah kalimat) ━━━
 PEMBUKA      — Baru salam/basa-basi. Sambut hangat, tanya sangat ringan.
 RAPPORT      — Ada obrolan ringan tapi belum ada fakta konkret. Cairkan suasana,
@@ -169,6 +182,35 @@ REKOMENDASI  — Ketiga ini sudah terpetakan dari cerita customer:
                Berikan rekomendasi lengkap dan final.
 WINDOW_SHOPPER — Customer bilang "lihat-lihat/iseng/belum pasti". Dampingi santai,
                jangan push. recommended_car_ids WAJIB [].
+
+━━━ JIKA CUSTOMER SEBUT MEREK LAIN ━━━
+Contoh: "saya lagi lirik Avanza" / "katanya Fortuner bagus" / "teman saya pakai BRV"
+→ JANGAN bandingkan spesifikasi teknis secara langsung.
+→ Gali MENGAPA customer tertarik pada mobil itu — kebutuhannya, bukan mobilnya.
+→ Setelah tahu alasannya, arahkan ke Mitsubishi yang memenuhi kebutuhan yang sama.
+→ hint_text: wajib mencantumkan merek yang disebut dan kebutuhan yang tersirat.
+→ Contoh respons yang benar:
+   Customer: "Saya lagi lirik Avanza."
+   AI hint: "Tertarik Avanza — kemungkinan cari MPV keluarga terjangkau"
+   AI question: "Avanza-nya untuk harian atau lebih sering perjalanan jauh?"
+   → Setelah tahu alasannya → arahkan ke Xpander atau Destinator dengan alasan berbasis cerita customer.
+
+━━━ JIKA CUSTOMER TANYA "ADA MOBIL APA SAJA?" ━━━
+→ JANGAN langsung sebut semua 8 model — itu overwhelming.
+→ Tanya dulu konteks ringan: "Biasanya dipakai untuk apa dulu, Pak/Bu?"
+→ Baru arahkan ke 2-3 model yang paling relevan dengan konteks tersebut.
+→ Jika customer tetap minta lihat semua: sebutkan semua model dengan satu kata pembeda masing-masing.
+   Contoh: "Kami ada Xpander (keluarga), Xforce (urban stylish), Pajero (petualangan),
+   Triton (niaga/pickup), Eclipse Cross (premium SUV), Outlander (PHEV modern),
+   Destinator (SUV tangguh), dan Xpander Cross (kombinasi MPV-SUV)."
+
+━━━ JIKA CUSTOMER TANYA REKOMENDASI LANGSUNG ━━━
+Contoh: "Menurut mas, saya cocok pakai apa?" / "Rekomendasiin dong"
+→ JANGAN langsung rekomendasikan model jika profil belum lengkap.
+→ Jawab dengan bridging question — akui pertanyaannya, lalu gali 1 hal yang paling menentukan.
+→ Contoh bridging: "Boleh, tapi biar rekomendasinya pas — ini lebih sering dipakai
+  harian dalam kota atau sesekali keluar kota juga?"
+→ Baru rekomendasikan setelah minimal tahap SINYAL_KUAT tercapai.               
 
 ━━━ MENTION PRODUK (PRIORITAS TERTINGGI) ━━━
 Jika customer menyebut nama model secara eksplisit — mis. "xpander", "xforce",
@@ -222,7 +264,7 @@ JSON tanpa markdown:
 {
   "tahap": "PEMBUKA|RAPPORT|EKSPLORASI|PENDALAMAN|SINYAL_KUAT|REKOMENDASI|WINDOW_SHOPPER",
   "hint_text": "insight singkat situasi customer, max 12 kata",
-  "suggested_question": "satu pertanyaan natural tentang kehidupan/aktivitas, max 12 kata",
+  "suggested_question": "satu pertanyaan natural, max 7 kata, langsung to the point — bukan kalimat lengkap formal",
   "probe_topics": ["Gali X", "Tanyakan Y"],
   "detected_needs": ["kebutuhan tersirat dari cerita customer"],
   "recommended_car_ids": [],
@@ -235,6 +277,8 @@ JSON tanpa markdown:
 def _extract_json(raw: str) -> dict:
     """Ekstrak JSON dari response LLM yang mungkin dibungkus markdown code block."""
     text = raw.strip()
+    if not text:
+        raise ValueError("LLM returned empty response")
     # Hapus markdown code block kalau ada (```json ... ``` atau ``` ... ```)
     if text.startswith("```"):
         lines = text.splitlines()
@@ -245,9 +289,9 @@ def _extract_json(raw: str) -> dict:
     # Ambil substring dari { pertama ke } terakhir
     start = text.find("{")
     end   = text.rfind("}") + 1
-    if start != -1 and end > start:
-        text = text[start:end]
-    return json.loads(text)
+    if start == -1 or end <= start:
+        raise ValueError(f"No JSON object found in LLM response: '{raw[:200]}'")
+    return json.loads(text[start:end])
 
 
 def _build_conversation_text(context: ConversationContext) -> str:
@@ -269,16 +313,32 @@ def _build_cars_summary() -> str:
     return "\n".join(lines)
 
 
+_TAHAP_TO_STAGE = {
+    "PEMBUKA":       "early",
+    "RAPPORT":       "rapport",
+    "EKSPLORASI":    "rapport",
+    "PENDALAMAN":    "probing",
+    "SINYAL_KUAT":   "probing",
+    "REKOMENDASI":   "closing",
+    "WINDOW_SHOPPER": "rapport",
+}
+
+
 async def analyze_conversation(context: ConversationContext) -> tuple[AiHintPayload, CarRecommendPayload]:
     """
     Analisis percakapan → hasilkan hint + rekomendasi.
     Mode demo: return dummy yang relevan berdasarkan keyword sederhana.
-    Mode production: kirim ke GPT.
+    Mode production: kirim ke Claude Haiku.
     """
     if settings.app_mode == "demo":
-        return await _demo_analyze(context)
+        result = await _demo_analyze(context)
+    else:
+        result = await _claude_analyze(context)
 
-    return await _openai_analyze(context)
+    hint_payload, _ = result
+    if hint_payload.tahap:
+        context.current_tahap = hint_payload.tahap
+    return result
 
 
 async def _demo_analyze(context: ConversationContext) -> tuple[AiHintPayload, CarRecommendPayload]:
@@ -421,10 +481,13 @@ async def _openai_analyze(context: ConversationContext) -> tuple[AiHintPayload, 
 
     # RAG: parallel retrieve — customer profiles + conversation patterns
     query = " ".join(u.text for u in context.utterances[-6:])
-    rag_customers, rag_patterns = await asyncio.gather(
-        search_similar_customers(query, top_k=3),
-        search_conversation_patterns(query, top_k=3),
-    )
+    if query.strip():
+        rag_customers, rag_patterns = await asyncio.gather(
+            search_similar_customers(query, top_k=3),
+            search_conversation_patterns(query, top_k=3),
+        )
+    else:
+        rag_customers, rag_patterns = [], []
     rag_section         = format_rag_context(rag_customers)
     rag_pattern_section = format_pattern_context(rag_patterns)
 
@@ -529,39 +592,66 @@ Daftar mobil tersedia (gunakan id persis dari sini):
 
 
 async def _claude_analyze(context: ConversationContext) -> tuple[AiHintPayload, CarRecommendPayload]:
-    """Analisis menggunakan Claude API — aktifkan di production."""
+    """Analisis menggunakan Claude Haiku 3.5."""
+    if not context.utterances:
+        return (
+            AiHintPayload(hint_text="", suggested_question="Selamat datang! Ada yang bisa saya bantu?", detected_needs=[], tahap="PEMBUKA"),
+            CarRecommendPayload(cars=[], reason=""),
+        )
+
     import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.AsyncAnthropic(api_key=settings.claude_api_key)
 
     conversation = _build_conversation_text(context)
     cars_summary = _build_cars_summary()
 
-    prompt = f"""Kamu adalah AI asisten untuk sales showroom mobil.
+    query = " ".join(u.text for u in context.utterances[-6:])
+    if query.strip():
+        rag_customers, rag_patterns = await asyncio.gather(
+            search_similar_customers(query, top_k=3),
+            search_conversation_patterns(query, top_k=3),
+        )
+    else:
+        rag_customers, rag_patterns = [], []
+    rag_section         = format_rag_context(rag_customers)
+    rag_pattern_section = format_pattern_context(rag_patterns)
 
-Percakapan yang berlangsung:
+    asked = context.asked_questions
+    asked_section = (
+        "Pertanyaan yang SUDAH pernah ditanyakan (JANGAN ulangi atau parafrase):\n"
+        + "\n".join(f"- {q}" for q in asked)
+        if asked else ""
+    )
+
+    full_text_for_elicitation = " ".join(u.text for u in context.utterances)
+    missing = compute_missing_dimensions(full_text_for_elicitation, context.blocked_dimensions)
+    elicitation_section = build_elicitation_prompt_section(missing, context.blocked_dimensions)
+
+    user_content = f"""Percakapan:
 {conversation}
 
-Daftar mobil tersedia:
+Daftar mobil tersedia (gunakan id persis dari sini):
 {cars_summary}
 
-Berikan analisis dalam format JSON berikut (tanpa markdown):
-{{
-  "hint_text": "insight singkat untuk sales (max 20 kata)",
-  "suggested_question": "pertanyaan lanjutan yang natural untuk sales tanyakan",
-  "detected_needs": ["kebutuhan 1", "kebutuhan 2"],
-  "recommended_car_ids": ["id-mobil-1", "id-mobil-2"],
-  "recommendation_reason": "alasan singkat rekomendasi"
-}}"""
+{rag_section}
+
+{rag_pattern_section}
+
+{asked_section}
+
+{elicitation_section}"""
 
     trace = langfuse.trace(name="analyze_conversation", input={"utterances": len(context.utterances)})
-    generation = trace.generation(name="claude_llm", model="claude-sonnet-4-20250514", input=prompt)
+    generation = trace.generation(name="claude_haiku_llm", model="claude-haiku-4-5-20251001", input=user_content)
 
     try:
         async with track_latency(llm_latency):
             response = await client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
+                model="claude-haiku-4-5-20251001",
+                max_tokens=600,
+                temperature=0.4,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_content}],
             )
         llm_requests.labels(status="sukses").inc()
     except Exception as e:
@@ -572,24 +662,50 @@ Berikan analisis dalam format JSON berikut (tanpa markdown):
     token_per_request.labels(tipe="input").observe(response.usage.input_tokens)
     token_per_request.labels(tipe="output").observe(response.usage.output_tokens)
 
-    raw = response.content[0].text
+    raw = response.content[0].text if response.content else ""
     generation.end(
         output=raw,
         usage={"input": response.usage.input_tokens, "output": response.usage.output_tokens},
     )
-    data = json.loads(raw)
+    logger.debug(f"[AI] Raw Claude response: {raw[:500]}")
+    try:
+        data = _extract_json(raw)
+    except (ValueError, json.JSONDecodeError) as parse_err:
+        logger.warning(f"[AI] JSON parse failed ({parse_err}), using empty fallback. raw={raw[:200]!r}")
+        error_total.labels(komponen="llm", tipe_error="json_parse").inc()
+        data = {}
+    tahap = data.get("tahap", "")
+    logger.info(
+        f"[AI] tahap={tahap} | "
+        f"suggested_question='{data.get('suggested_question', '')[:80]}' | "
+        f"car_ids={data.get('recommended_car_ids', [])}"
+    )
+
+    question_source = data.get("question_source", "generated")
 
     hint_payload = AiHintPayload(
-        hint_text=data["hint_text"],
-        suggested_question=data["suggested_question"],
-        detected_needs=data["detected_needs"],
+        hint_text=data.get("hint_text", ""),
+        suggested_question=data.get("suggested_question", ""),
+        probe_topics=data.get("probe_topics", []),
+        detected_needs=data.get("detected_needs", []),
+        tahap=tahap,
+        blocked_dimension=data.get("blocked_dimension", ""),
+        question_source=question_source,
     )
-    cars = [get_car_by_id(cid) for cid in data["recommended_car_ids"] if get_car_by_id(cid)]
+    car_ids = data.get("recommended_car_ids", [])
+
+    full_text_all = " ".join(u.text for u in context.utterances)
+    mention_ids_prod, _ = _detect_car_mentions(full_text_all)
+    for mid in mention_ids_prod:
+        if mid not in car_ids:
+            car_ids.insert(0, mid)
+
+    cars = [get_car_by_id(cid) for cid in car_ids if get_car_by_id(cid)]
     for car in cars:
         rekomendasi_total.labels(merek_mobil=car.brand).inc()
     car_payload = CarRecommendPayload(
         cars=cars,
-        reason=data["recommendation_reason"],
+        reason=data.get("recommendation_reason", ""),
     )
-    trace.update(output={"hint": data["hint_text"], "recommended": data["recommended_car_ids"]})
+    trace.update(output={"hint": data.get("hint_text", ""), "tahap": tahap, "recommended": car_ids})
     return hint_payload, car_payload

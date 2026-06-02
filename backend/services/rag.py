@@ -30,8 +30,6 @@ from backend.services.metrics import rag_latency, rag_fallback_total, rag_result
 logger = logging.getLogger(__name__)
 
 EMBEDDING_MODEL          = "llama-text-embed-v2"
-RERANK_MODEL             = "bge-reranker-v2-m3"
-RERANK_PREFETCH          = 5   # over-fetch multiplier before reranking
 MIN_SCORE                = 0.30
 CONVERSATION_PATTERNS_NS = "conversation-patterns"
 
@@ -62,45 +60,15 @@ async def _embed(text: str) -> list[float]:
     return await asyncio.to_thread(_embed_sync, text)
 
 
-def _customer_to_text(meta: dict) -> str:
-    """Reconstruct searchable text from customer metadata for cross-encoder re-ranking."""
-    parts = [
-        f"{meta.get('pekerjaan', '')} {meta.get('usia', '')} tahun dari {meta.get('kota', '')}",
-        f"anggaran {meta.get('anggaran_min', '')}-{meta.get('anggaran_max', '')} juta",
-        meta.get("faktor_utama", ""),
-        meta.get("tags", ""),
-        meta.get("mobil_dibeli", ""),
-    ]
-    return " | ".join(p for p in parts if p)
-
-
-def _rerank_sync(query: str, documents: list[str], top_n: int) -> list[int]:
-    """
-    Cross-encoder re-rank via Pinecone inference.
-    Returns original indices into `documents`, sorted best-first.
-    """
-    pc = _pinecone_client()
-    result = pc.inference.rerank(
-        model=RERANK_MODEL,
-        query=query,
-        documents=documents,
-        top_n=top_n,
-        return_documents=False,
-    )
-    return [item.index for item in result.data]
-
-
-async def _rerank(query: str, documents: list[str], top_n: int) -> list[int]:
-    return await asyncio.to_thread(_rerank_sync, query, documents, top_n)
-
 
 async def search_similar_customers(query_text: str, top_k: int = 3) -> list[dict]:
     """
     Return metadata dicts for up to top_k historical customers similar to query_text.
-    Over-fetches RERANK_PREFETCH × top_k candidates, then re-ranks with a cross-encoder.
     Returns [] silently if Pinecone is not configured or any error occurs.
     """
     _ns = settings.pinecone_namespace or "customers-data"
+    if not query_text or not query_text.strip():
+        return []
     if not settings.pinecone_api_key or not settings.pinecone_index_name:
         rag_fallback_total.labels(namespace=_ns).inc()
         return []
@@ -113,7 +81,7 @@ async def search_similar_customers(query_text: str, top_k: int = 3) -> list[dict
         results = await asyncio.to_thread(
             index.query,
             vector=embedding,
-            top_k=top_k * RERANK_PREFETCH,
+            top_k=top_k,
             include_metadata=True,
             namespace=_ns,
         )
@@ -123,13 +91,7 @@ async def search_similar_customers(query_text: str, top_k: int = 3) -> list[dict
             rag_results_returned.labels(namespace=_ns).observe(0)
             return []
 
-        try:
-            doc_texts = [_customer_to_text(m) for m in candidates]
-            indices = await _rerank(query_text, doc_texts, top_n=min(top_k, len(candidates)))
-            final = [candidates[i] for i in indices]
-        except Exception as rerank_exc:
-            logger.warning(f"[RAG] Re-rank failed, using vector order: {rerank_exc}")
-            final = candidates[:top_k]
+        final = candidates[:top_k]
 
         rag_latency.labels(namespace=_ns).observe(time.perf_counter() - _start)
         rag_results_returned.labels(namespace=_ns).observe(len(final))
@@ -144,14 +106,17 @@ async def search_similar_customers(query_text: str, top_k: int = 3) -> list[dict
 async def search_conversation_patterns(
     conversation_text: str,
     top_k: int = 3,
+    stage: str | None = None,
 ) -> list[dict]:
     """
     Cari pola percakapan historis yang mirip sequence percakapan saat ini.
 
     Query: gabungan 3-5 utterance terakhir sebagai teks.
-    Over-fetches RERANK_PREFETCH × top_k candidates, then re-ranks with a cross-encoder.
+    stage: filter opsional — hanya ambil pola dengan stage yang cocok.
     Returns: list metadata dengan 'effective_next_question', 'stage', 'why_effective'.
     """
+    if not conversation_text or not conversation_text.strip():
+        return []
     if not settings.pinecone_api_key or not settings.pinecone_index_name:
         rag_fallback_total.labels(namespace=CONVERSATION_PATTERNS_NS).inc()
         return []
@@ -161,26 +126,23 @@ async def search_conversation_patterns(
         embedding = await _embed(conversation_text)
         index = await asyncio.to_thread(_pinecone_index)
 
-        results = await asyncio.to_thread(
-            index.query,
+        query_kwargs: dict = dict(
             vector=embedding,
-            top_k=top_k * RERANK_PREFETCH,
+            top_k=top_k,
             include_metadata=True,
             namespace=CONVERSATION_PATTERNS_NS,
         )
+        if stage:
+            query_kwargs["filter"] = {"stage": {"$eq": stage}}
+
+        results = await asyncio.to_thread(index.query, **query_kwargs)
         candidates = [m.metadata for m in results.matches if m.score >= MIN_SCORE and m.metadata]
         if not candidates:
             rag_latency.labels(namespace=CONVERSATION_PATTERNS_NS).observe(time.perf_counter() - _start)
             rag_results_returned.labels(namespace=CONVERSATION_PATTERNS_NS).observe(0)
             return []
 
-        try:
-            doc_texts = [m.get("sequence") or m.get("effective_next_question", "") for m in candidates]
-            indices = await _rerank(conversation_text, doc_texts, top_n=min(top_k, len(candidates)))
-            final = [candidates[i] for i in indices]
-        except Exception as rerank_exc:
-            logger.warning(f"[RAG/Patterns] Re-rank failed, using vector order: {rerank_exc}")
-            final = candidates[:top_k]
+        final = candidates[:top_k]
 
         rag_latency.labels(namespace=CONVERSATION_PATTERNS_NS).observe(time.perf_counter() - _start)
         rag_results_returned.labels(namespace=CONVERSATION_PATTERNS_NS).observe(len(final))

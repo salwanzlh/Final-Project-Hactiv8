@@ -92,54 +92,51 @@ Kalimat baru yang harus diklasifikasikan:
 
 Berikan confidence RENDAH (< 0.5) jika kalimat ambigu, kemungkinan overlap, atau konteks belum cukup."""
 
+    _SYSTEM_PROMPT = """Klasifikasikan speaker percakapan showroom Mitsubishi Indonesia: SALES atau CUSTOMER.
+━━━ SINYAL ━━━
+SALES pasti  : "Ada yang bisa saya bantu", "Selamat datang", "Silakan", memanggil "Pak/Bu",
+            menawarkan test drive/brosur/kredit, sebut "unit kami / promo bulan ini".
+CUSTOMER pasti: memanggil "Mbak/Mas", "Saya lagi cari/mau/butuh", cerita keluarga/rutinitas pribadi,
+            "Budget/DP/cicilan saya...", bertanya harga/stok/kredit sebagai respons.
+SALES kuat   : menjelaskan spesifikasi/harga atas inisiatif sendiri, menggali kebutuhan customer.
+CUSTOMER kuat: menyatakan preferensi pribadi, ungkapkan keberatan ("mahal ya", "pikir dulu").
+LEMAH        : sapaan netral / jawaban pendek → assign ke speaker BERBEDA dari sebelumnya.
+AMBIGU       : confidence 0.50, tetap pilih, jangan null.
+
+━━━ EXAMPLES ━━━
+"Halo Mbak selamat siang" | riwayat: - → {"speaker":"customer","confidence":0.95}
+"Ada yang bisa saya bantu Pak?" | riwayat: [customer] → {"speaker":"sales","confidence":0.97}
+"Ada 5 orang, saya istri sama 3 anak" | riwayat: [sales: tanya berapa orang] → {"speaker":"customer","confidence":0.95}
+"Kalau gitu berarti kita butuh yang nyaman buat jarak jauh" | riwayat: [customer: sering mudik] → {"speaker":"sales","confidence":0.85}
+"Wah lumayan ya, bisa dicicil tidak Mas?" | riwayat: [sales: sebut harga] → {"speaker":"customer","confidence":0.96}
+"Iya" | riwayat: [sales: tanya keluar kota] → {"speaker":"customer","confidence":0.65}
+"Selamat pagi" | riwayat: - → {"speaker":"sales","confidence":0.72}
+
+Jawab HANYA JSON: {"speaker":"sales","confidence":0.85}"""
+
     try:
-        from openai import AsyncOpenAI
+        import anthropic
         from backend.services.langfuse_client import langfuse
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    """Klasifikasikan speaker percakapan showroom Mitsubishi Indonesia: SALES atau CUSTOMER.
-                    ━━━ SINYAL ━━━
-                    SALES pasti  : "Ada yang bisa saya bantu", "Selamat datang", "Silakan", memanggil "Pak/Bu",
-                                menawarkan test drive/brosur/kredit, sebut "unit kami / promo bulan ini".
-                    CUSTOMER pasti: memanggil "Mbak/Mas", "Saya lagi cari/mau/butuh", cerita keluarga/rutinitas pribadi,
-                                "Budget/DP/cicilan saya...", bertanya harga/stok/kredit sebagai respons.
-                    SALES kuat   : menjelaskan spesifikasi/harga atas inisiatif sendiri, menggali kebutuhan customer.
-                    CUSTOMER kuat: menyatakan preferensi pribadi, ungkapkan keberatan ("mahal ya", "pikir dulu").
-                    LEMAH        : sapaan netral / jawaban pendek → assign ke speaker BERBEDA dari sebelumnya.
-                    AMBIGU       : confidence 0.50, tetap pilih, jangan null.
+        client = anthropic.AsyncAnthropic(api_key=settings.claude_api_key)
 
-                    ━━━ EXAMPLES ━━━
-                    "Halo Mbak selamat siang" | riwayat: - → {"speaker":"customer","confidence":0.95}
-                    "Ada yang bisa saya bantu Pak?" | riwayat: [customer] → {"speaker":"sales","confidence":0.97}
-                    "Ada 5 orang, saya istri sama 3 anak" | riwayat: [sales: tanya berapa orang] → {"speaker":"customer","confidence":0.95}
-                    "Kalau gitu berarti kita butuh yang nyaman buat jarak jauh" | riwayat: [customer: sering mudik] → {"speaker":"sales","confidence":0.85}
-                    "Wah lumayan ya, bisa dicicil tidak Mas?" | riwayat: [sales: sebut harga] → {"speaker":"customer","confidence":0.96}
-                    "Iya" | riwayat: [sales: tanya keluar kota] → {"speaker":"customer","confidence":0.65}
-                    "Selamat pagi" | riwayat: - → {"speaker":"sales","confidence":0.72}
-
-                    Jawab HANYA JSON: {"speaker":"sales","confidence":0.85}"""
-                    ),
-            },
-            {"role": "user", "content": user_prompt},
-        ]
         trace = langfuse.trace(name="classify_speaker", input={"text": clean[:100]})
-        generation = trace.generation(name="speaker_classifier_llm", model="gpt-4.1", input=user_prompt)
-        response = await client.chat.completions.create(
-            model="gpt-4.1",
+        generation = trace.generation(name="speaker_classifier_llm", model="claude-haiku-4-5-20251001", input=user_prompt)
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
             max_tokens=30,
             temperature=0.1,
-            response_format={"type": "json_object"},
-            messages=messages,
+            system=_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
         )
-        raw  = response.choices[0].message.content.strip()
+        raw  = response.content[0].text.strip()
         generation.end(
             output=raw,
-            usage={"input": response.usage.prompt_tokens, "output": response.usage.completion_tokens},
+            usage={"input": response.usage.input_tokens, "output": response.usage.output_tokens},
         )
-        data = json.loads(raw)
+        # Ekstrak JSON — Claude kadang tambah teks sebelum/sesudah
+        start = raw.find("{")
+        end   = raw.rfind("}") + 1
+        data  = json.loads(raw[start:end] if start != -1 and end > start else raw)
 
         speaker    = data.get("speaker", "unknown")
         confidence = float(data.get("confidence", 0.5))

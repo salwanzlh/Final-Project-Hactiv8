@@ -3,7 +3,7 @@ Seed sales_history.jsonl → Pinecone namespace: conversation-patterns
 
 Untuk setiap sesi, buat sliding windows dari transcript:
   window[i..i+N]  → vector (sequence yang di-embed)
-  next sales turn → effective_next_question (apa yang ditanya sales setelahnya)
+  next sales turn → effective_next_question (direwrite LLM: max 7 kata, tanpa merek)
 
 Jalankan:
     python -m backend.scripts.seed_conversation_patterns
@@ -15,6 +15,7 @@ import pathlib
 JSONL_PATH  = pathlib.Path(__file__).parent.parent / "db" / "sales_history.jsonl"
 WINDOW_SIZE = 4    # utterances per window (~2 full turns)
 BATCH_SIZE  = 96   # Pinecone upsert batch limit
+LLM_BATCH   = 20   # rewrite per LLM call (batched untuk efisiensi)
 
 
 def _infer_stage(idx: int, total: int) -> str:
@@ -30,6 +31,48 @@ def _fmt(utterances: list[dict]) -> str:
         f"{'Sales' if u['speaker'] == 'sales' else 'Customer'}: {u['text']}"
         for u in utterances
     )
+
+
+def _rewrite_questions_batch(questions: list[str]) -> list[str]:
+    """
+    Rewrite daftar pertanyaan via Claude Haiku:
+    - Hapus semua nama merek/model (Toyota, Honda, Ertiga, Sigra, dll)
+    - Buat pertanyaan generik, natural, max 7 kata
+    - Pertahankan topik/dimensi yang digali (keluarga, budget, rutinitas, dll)
+    """
+    from anthropic import Anthropic
+    from backend.config import settings
+
+    client = Anthropic(api_key=settings.claude_api_key)
+
+    numbered = "\n".join(f"{i+1}. {q}" for i, q in enumerate(questions))
+    prompt = f"""Kamu adalah asisten yang membantu membersihkan data training untuk AI sales showroom Mitsubishi.
+
+Tugas: Rewrite setiap pertanyaan di bawah menjadi pertanyaan generik untuk sales showroom mobil.
+Aturan WAJIB:
+- Hapus semua nama merek/model mobil (Toyota, Honda, Suzuki, Daihatsu, Ertiga, Avanza, Jazz, Sigra, dll)
+- Maksimal 7 kata
+- Natural, tidak formal, to the point
+- Pertahankan topik yang digali (jumlah orang, budget, rutinitas, cicilan, dll)
+- Jika bukan pertanyaan (kalimat pernyataan), ubah jadi pertanyaan
+
+Pertanyaan:
+{numbered}
+
+Jawab HANYA JSON array dengan jumlah elemen sama persis:
+["pertanyaan 1", "pertanyaan 2", ...]"""
+
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1000,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = response.content[0].text.strip()
+    start, end = raw.find("["), raw.rfind("]") + 1
+    result = json.loads(raw[start:end])
+    if len(result) != len(questions):
+        return questions  # fallback ke original kalau parsing gagal
+    return result
 
 
 def build_records() -> list[dict]:
@@ -74,7 +117,18 @@ def build_records() -> list[dict]:
                 "rapport_style":           rapport,
             })
 
-    print(f"Generated {len(records)} windows dari {len(sessions)} sesi")
+    print(f"Generated {len(records)} windows — rewriting questions via LLM...")
+    all_questions = [r["effective_next_question"] for r in records]
+    rewritten: list[str] = []
+    for start in range(0, len(all_questions), LLM_BATCH):
+        batch = all_questions[start : start + LLM_BATCH]
+        print(f"  Rewriting {start+1}-{start+len(batch)} / {len(all_questions)}...")
+        rewritten.extend(_rewrite_questions_batch(batch))
+
+    for rec, q in zip(records, rewritten):
+        rec["effective_next_question"] = q
+
+    print(f"Done rewriting. Total records: {len(records)}")
     return records
 
 

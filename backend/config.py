@@ -5,10 +5,12 @@ class Settings(BaseSettings):
     featherless_api_key: str = ""
     featherless_base_url: str = ""
     openai_api_key: str = ""
+    claude_api_key: str = ""
 
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_host: str = "http://localhost:3000"
+    langfuse_enabled: bool = True
 
     language: Literal["id", "en"] = "id"
 
