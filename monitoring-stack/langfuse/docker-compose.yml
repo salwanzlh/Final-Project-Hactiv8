@@ -1,0 +1,25 @@
+services:
+  langfuse-server:
+    image: langfuse/langfuse:2
+    depends_on:
+      - langfuse-db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:password@langfuse-db:5432/langfuse
+      NEXTAUTH_SECRET: rahasia-ganti-ini-random-string
+      SALT: garam-ganti-ini-random-string
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: "false"
+
+  langfuse-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_db:/var/lib/postgresql/data
+
+volumes:
+  langfuse_db:

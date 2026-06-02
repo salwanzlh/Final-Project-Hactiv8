@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Warna utama — Mitsubishi uniform: hitam, merah, putih, abu */
+  --bg:          #0a0a0a;
+  --bg-card:     #141414;
+  --bg-elevated: #1c1c1c;
+  --border:      rgba(255,255,255,0.07);
+  --border-mid:  rgba(228,0,27,0.3);
+
+  /* Teks */
+  --text-primary:   #f5f5f5;
+  --text-secondary: #a0a0a0;
+  --text-muted:     #555555;
+
+  /* Aksen Mitsubishi */
+  --red:         #e4001b;
+  --red-dim:     rgba(228,0,27,0.15);
+  --red-bright:  #ff1a30;
+  --white:       #ffffff;
+  --white-dim:   rgba(255,255,255,0.08);
+  --gray:        #d0d0d0;
+  --gray-dim:    rgba(208,208,208,0.08);
+  --green:       #e4001b;
+  --green-dim:   rgba(228,0,27,0.12);
+  --amber:       #e4001b;
+  --amber-dim:   rgba(228,0,27,0.12);
+  --blue:        #e4001b;
+  --blue-dim:    rgba(228,0,27,0.15);
+
+  /* Layout */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+body { min-height: 100dvh; overflow-x: hidden; }
+
+/* Scrollbar tipis */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+/* Utility */
+.mono { font-family: 'DM Mono', monospace; }

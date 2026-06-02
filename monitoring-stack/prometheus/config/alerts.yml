@@ -1,0 +1,121 @@
+groups:
+  - name: showroom_ai_alerts
+    rules:
+
+      # LLM terlalu lambat
+      - alert: LLMLambat
+        expr: >
+          histogram_quantile(0.95,
+            rate(showroom_ai_llm_latency_seconds_bucket[5m])
+          ) > 3
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM response lambat"
+          description: "P95 latency LLM {{ $value | humanizeDuration }} (threshold: 3s)"
+
+      # TTS terlalu lambat
+      - alert: TTSLambat
+        expr: >
+          histogram_quantile(0.95,
+            rate(showroom_ai_tts_latency_seconds_bucket[5m])
+          ) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TTS synthesis lambat"
+          description: "P95 latency TTS {{ $value | humanizeDuration }} (threshold: 5s)"
+
+      # Error rate tinggi (semua komponen)
+      - alert: ErrorRateTinggi
+        expr: rate(showroom_ai_error_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate tinggi: {{ $labels.komponen }}"
+          description: "{{ $value | humanize }} error/detik di komponen {{ $labels.komponen }}"
+
+      # LLM error rate tinggi secara spesifik
+      - alert: LLMErrorTinggi
+        expr: >
+          rate(showroom_ai_llm_requests_total{status="gagal"}[5m])
+          /
+          rate(showroom_ai_llm_requests_total[5m]) > 0.2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM gagal lebih dari 20% request"
+          description: "LLM failure rate: {{ $value | humanizePercentage }}"
+
+      # Tidak ada sesi aktif selama 10 menit (mungkin crash)
+      - alert: TidakAdaSesiAktif
+        expr: showroom_ai_sesi_aktif == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tidak ada sesi WebSocket aktif selama 10 menit"
+
+      # Pipeline total terlalu lambat
+      - alert: PipelineLambat
+        expr: >
+          histogram_quantile(0.95,
+            rate(showroom_ai_pipeline_latency_seconds_bucket[5m])
+          ) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline STT→LLM lambat"
+          description: "P95 total pipeline {{ $value | humanizeDuration }} (threshold: 5s)"
+
+      # Full roundtrip (termasuk TTS) terlalu lambat
+      - alert: RoundtripLambat
+        expr: >
+          histogram_quantile(0.95,
+            rate(showroom_ai_roundtrip_latency_seconds_bucket[5m])
+          ) > 10
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Full roundtrip audio→TTS lambat"
+          description: "P95 roundtrip {{ $value | humanizeDuration }} (threshold: 10s)"
+
+      # RAG Pinecone sering gagal
+      - alert: RAGFallbackTinggi
+        expr: rate(showroom_ai_rag_fallback_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RAG Pinecone sering gagal: {{ $labels.namespace }}"
+          description: "Fallback rate {{ $value | humanize }}/s — cek koneksi Pinecone"
+
+      # Classifier confidence rendah — banyak salah klasifikasi
+      - alert: ClassifierKonfidenRendah
+        expr: >
+          rate(showroom_ai_classifier_lowconf_total[5m])
+          /
+          rate(showroom_ai_classifier_confidence_count[5m]) > 0.3
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Speaker classifier sering tidak yakin"
+          description: "Low-confidence rate {{ $value | humanizePercentage }} (threshold: 30%)"
+
+      # Banyak WebSocket disconnect mendadak
+      - alert: WSDisconnectTinggi
+        expr: >
+          rate(showroom_ai_ws_disconnect_total{reason="unexpected"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "WebSocket sering terputus mendadak"
+          description: "{{ $value | humanize }} unexpected disconnect/detik"

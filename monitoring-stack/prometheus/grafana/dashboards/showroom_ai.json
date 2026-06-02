@@ -1,0 +1,1938 @@
+{
+  "title": "Showroom AI — Overview",
+  "uid": "showroom-ai-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "tags": [
+    "showroom",
+    "ai"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Live Status",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Sesi Aktif",
+      "description": "WebSocket sessions yang sedang berlangsung sekarang",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "showroom_ai_sesi_aktif",
+          "legendFormat": "Sesi Aktif",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total Rekomendasi (1h)",
+      "description": "Jumlah mobil yang direkomendasikan dalam 1 jam terakhir",
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_rekomendasi_total[1h])",
+          "legendFormat": "Rekomendasi",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "LLM Error Rate",
+      "description": "% request LLM yang gagal dalam 5 menit terakhir",
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_llm_requests_total{status=\"gagal\"}[5m]) / rate(showroom_ai_llm_requests_total[5m])",
+          "legendFormat": "Error Rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "LLM P95 Latency",
+      "description": "Persentil ke-95 durasi LLM response",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1.5
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_llm_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Pipeline P95 Latency",
+      "description": "Persentil ke-95 durasi total STT→LLM",
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_pipeline_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Sesi Selesai (1h)",
+      "description": "Total sesi yang berakhir dalam 1 jam terakhir",
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_sesi_selesai_total[1h])",
+          "legendFormat": "{{outcome}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Latency",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "STT Latency — P50 / P95 / P99",
+      "description": "Distribusi durasi Whisper STT per audio chunk",
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_stt_latency_seconds_bucket[5m]))",
+          "legendFormat": "P50",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_stt_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, rate(showroom_ai_stt_latency_seconds_bucket[5m]))",
+          "legendFormat": "P99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "LLM Latency — P50 / P95 / P99",
+      "description": "Distribusi durasi LLM response (Featherless / Claude)",
+      "gridPos": {
+        "x": 8,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_llm_latency_seconds_bucket[5m]))",
+          "legendFormat": "P50",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_llm_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, rate(showroom_ai_llm_latency_seconds_bucket[5m]))",
+          "legendFormat": "P99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Pipeline Latency — P50 / P95 / P99",
+      "description": "Durasi end-to-end STT→LLM per audio chunk",
+      "gridPos": {
+        "x": 16,
+        "y": 6,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_pipeline_latency_seconds_bucket[5m]))",
+          "legendFormat": "P50",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_pipeline_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, rate(showroom_ai_pipeline_latency_seconds_bucket[5m]))",
+          "legendFormat": "P99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Throughput & Errors",
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Request Rate — STT / LLM / TTS",
+      "description": "Requests per detik per komponen",
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_stt_requests_total[1m])",
+          "legendFormat": "STT — {{status}}",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_llm_requests_total[1m])",
+          "legendFormat": "LLM — {{status}}",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_tts_requests_total[1m])",
+          "legendFormat": "TTS — {{status}}",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Error Rate per Komponen",
+      "description": "Error per detik, dipecah per komponen dan tipe error",
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_error_total[1m])",
+          "legendFormat": "{{komponen}} — {{tipe_error}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "LLM Tokens",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Token Usage — Input vs Output",
+      "description": "Rata-rata token per request, dipecah input/output",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_token_per_request_sum{tipe=\"input\"}[5m]) / rate(showroom_ai_token_per_request_count{tipe=\"input\"}[5m])",
+          "legendFormat": "Input (avg)",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_token_per_request_sum{tipe=\"output\"}[5m]) / rate(showroom_ai_token_per_request_count{tipe=\"output\"}[5m])",
+          "legendFormat": "Output (avg)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Token Rate — Total per Menit",
+      "description": "Estimasi total token yang dikonsumsi per menit",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_token_per_request_sum{tipe=\"input\"}[1m]) * 60",
+          "legendFormat": "Input token/menit",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_token_per_request_sum{tipe=\"output\"}[1m]) * 60",
+          "legendFormat": "Output token/menit",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "Rekomendasi & Sesi",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 41,
+      "type": "piechart",
+      "title": "Rekomendasi per Merek Mobil",
+      "description": "Proporsi rekomendasi yang diberikan, dipecah per brand",
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_rekomendasi_total[24h])",
+          "legendFormat": "{{merek_mobil}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "type": "piechart",
+      "title": "Outcome Sesi",
+      "description": "Proporsi sesi berdasarkan hasil akhir",
+      "gridPos": {
+        "x": 8,
+        "y": 33,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "pieType": "donut",
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_sesi_selesai_total[24h])",
+          "legendFormat": "{{outcome}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "type": "timeseries",
+      "title": "Sesi Aktif (Historis)",
+      "description": "Jumlah sesi WebSocket aktif dari waktu ke waktu",
+      "gridPos": {
+        "x": 16,
+        "y": 33,
+        "w": 8,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15
+          },
+          "color": {
+            "fixedColor": "green",
+            "mode": "fixed"
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "showroom_ai_sesi_aktif",
+          "legendFormat": "Sesi Aktif",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "type": "row",
+      "title": "RAG / Pinecone",
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 51,
+      "type": "stat",
+      "title": "RAG Fallback (1h)",
+      "description": "Berapa kali Pinecone gagal → sistem pakai fallback",
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_rag_fallback_total[1h])",
+          "legendFormat": "RAG Fallback (1h)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "type": "stat",
+      "title": "RAG P95 Latency — Customers",
+      "description": "P95 durasi retrieval namespace customers-data",
+      "gridPos": {
+        "x": 6,
+        "y": 42,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1.5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_rag_latency_seconds_bucket{namespace=\"customers-data\"}[5m]))",
+          "legendFormat": "RAG P95 Latency — Customers",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "type": "stat",
+      "title": "RAG P95 Latency — Patterns",
+      "description": "P95 durasi retrieval namespace conversation-patterns",
+      "gridPos": {
+        "x": 12,
+        "y": 42,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1.5
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_rag_latency_seconds_bucket{namespace=\"conversation-patterns\"}[5m]))",
+          "legendFormat": "RAG P95 Latency — Patterns",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "type": "stat",
+      "title": "Avg RAG Results Returned",
+      "description": "Rata-rata jumlah dokumen yang dikembalikan per query",
+      "gridPos": {
+        "x": 18,
+        "y": 42,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "green",
+                "value": 2
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_rag_results_returned_sum[5m]) / rate(showroom_ai_rag_results_returned_count[5m])",
+          "legendFormat": "Avg RAG Results Returned",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "type": "timeseries",
+      "title": "RAG Latency — P50 / P95 per Namespace",
+      "description": "Distribusi latency RAG Pinecone dipecah per namespace",
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_rag_latency_seconds_bucket{namespace=\"customers-data\"}[5m]))",
+          "legendFormat": "Customers P50",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_rag_latency_seconds_bucket{namespace=\"customers-data\"}[5m]))",
+          "legendFormat": "Customers P95",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_rag_latency_seconds_bucket{namespace=\"conversation-patterns\"}[5m]))",
+          "legendFormat": "Patterns P50",
+          "refId": "C"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_rag_latency_seconds_bucket{namespace=\"conversation-patterns\"}[5m]))",
+          "legendFormat": "Patterns P95",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "type": "timeseries",
+      "title": "RAG Fallback Rate & Results Count",
+      "description": "Laju fallback Pinecone dan rata-rata hasil yang dikembalikan",
+      "gridPos": {
+        "x": 12,
+        "y": 46,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_rag_fallback_total[1m])",
+          "legendFormat": "Fallback rate — {{namespace}}",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_rag_results_returned_sum[5m]) / rate(showroom_ai_rag_results_returned_count[5m])",
+          "legendFormat": "Avg results — {{namespace}}",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "type": "row",
+      "title": "Speaker Classifier",
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 61,
+      "type": "stat",
+      "title": "Classifier P95 Latency",
+      "description": "P95 durasi LLM classifier per utterance",
+      "gridPos": {
+        "x": 0,
+        "y": 55,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 1.0
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_classifier_latency_seconds_bucket[5m]))",
+          "legendFormat": "Classifier P95 Latency",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "type": "stat",
+      "title": "Low-Confidence Rate",
+      "description": "% klasifikasi dengan confidence < 0.6 dalam 5 menit",
+      "gridPos": {
+        "x": 6,
+        "y": 55,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.15
+              },
+              {
+                "color": "red",
+                "value": 0.3
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_classifier_lowconf_total[5m]) / rate(showroom_ai_classifier_confidence_count[5m])",
+          "legendFormat": "Low-Confidence Rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "type": "stat",
+      "title": "Low-Confidence Total (1h)",
+      "description": "Jumlah utterance dengan confidence rendah dalam 1 jam",
+      "gridPos": {
+        "x": 12,
+        "y": 55,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_classifier_lowconf_total[1h])",
+          "legendFormat": "Low-Confidence Total (1h)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "type": "stat",
+      "title": "Classifier Avg Confidence",
+      "description": "Rata-rata confidence score dalam 5 menit terakhir",
+      "gridPos": {
+        "x": 18,
+        "y": 55,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.75
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_classifier_confidence_sum[5m]) / rate(showroom_ai_classifier_confidence_count[5m])",
+          "legendFormat": "Classifier Avg Confidence",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "type": "timeseries",
+      "title": "Classifier Latency — P50 / P95 / P99",
+      "description": "Distribusi durasi speaker classification",
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_classifier_latency_seconds_bucket[5m]))",
+          "legendFormat": "P50",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_classifier_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, rate(showroom_ai_classifier_latency_seconds_bucket[5m]))",
+          "legendFormat": "P99",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "type": "timeseries",
+      "title": "Confidence Score Distribution",
+      "description": "Distribusi confidence score — P25, P50, P75 — idealnya > 0.7",
+      "gridPos": {
+        "x": 12,
+        "y": 59,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.25, rate(showroom_ai_classifier_confidence_bucket[5m]))",
+          "legendFormat": "P25",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(showroom_ai_classifier_confidence_bucket[5m]))",
+          "legendFormat": "P50 (median)",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.75, rate(showroom_ai_classifier_confidence_bucket[5m]))",
+          "legendFormat": "P75",
+          "refId": "C"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_classifier_lowconf_total[1m])",
+          "legendFormat": "Low-conf rate (/s)",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "type": "row",
+      "title": "WebSocket & Conversation Quality",
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false
+    },
+    {
+      "id": 71,
+      "type": "stat",
+      "title": "Unexpected Disconnects (1h)",
+      "description": "WS yang terputus sebelum session_end diterima",
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_ws_disconnect_total{reason=\"unexpected\"}[1h])",
+          "legendFormat": "Unexpected Disconnects (1h)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "type": "stat",
+      "title": "AI Busy Skips (1h)",
+      "description": "Audio chunk yang di-skip karena LLM masih sibuk",
+      "gridPos": {
+        "x": 6,
+        "y": 68,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_ai_busy_skip_total[1h])",
+          "legendFormat": "AI Busy Skips (1h)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "type": "stat",
+      "title": "Silence Watchdog (1h)",
+      "description": "Berapa kali customer diam melebihi threshold dan sistem trigger fallback",
+      "gridPos": {
+        "x": 12,
+        "y": 68,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "increase(showroom_ai_silence_watchdog_total[1h])",
+          "legendFormat": "Silence Watchdog (1h)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "type": "stat",
+      "title": "Roundtrip P95 Latency",
+      "description": "P95 end-to-end: audio masuk → TTS terkirim ke frontend",
+      "gridPos": {
+        "x": 18,
+        "y": 68,
+        "w": 6,
+        "h": 4
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": []
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_roundtrip_latency_seconds_bucket[5m]))",
+          "legendFormat": "Roundtrip P95 Latency",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "type": "timeseries",
+      "title": "Conversation Stage Distribution",
+      "description": "Seberapa jauh percakapan mencapai tahap REKOMENDASI",
+      "gridPos": {
+        "x": 0,
+        "y": 72,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_conversation_stage_total[5m])",
+          "legendFormat": "{{tahap}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 76,
+      "type": "timeseries",
+      "title": "Deflection per Dimensi & Filler Filtered",
+      "description": "Dimensi yang dihindari customer + utterance filler yang dibuang",
+      "gridPos": {
+        "x": 12,
+        "y": 72,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_deflection_total[5m])",
+          "legendFormat": "Defleksi — {{dimension}}",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_filler_filtered_total[1m])",
+          "legendFormat": "Filler filtered",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 77,
+      "type": "timeseries",
+      "title": "WebSocket Connect / Disconnect",
+      "description": "Laju koneksi masuk vs terputus (clean & unexpected)",
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_ws_connect_total[1m])",
+          "legendFormat": "Connect",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_ws_disconnect_total{reason=\"clean\"}[1m])",
+          "legendFormat": "Disconnect — clean",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(showroom_ai_ws_disconnect_total{reason=\"unexpected\"}[1m])",
+          "legendFormat": "Disconnect — unexpected",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 78,
+      "type": "timeseries",
+      "title": "Roundtrip vs Pipeline Latency — P95",
+      "description": "Perbandingan: pipeline STT→LLM vs full roundtrip termasuk TTS",
+      "gridPos": {
+        "x": 12,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "lineWidth": 2
+          }
+        }
+      },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_pipeline_latency_seconds_bucket[5m]))",
+          "legendFormat": "Pipeline STT→LLM P95",
+          "refId": "A"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_roundtrip_latency_seconds_bucket[5m]))",
+          "legendFormat": "Full Roundtrip P95",
+          "refId": "B"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(showroom_ai_tts_latency_seconds_bucket[5m]))",
+          "legendFormat": "TTS P95",
+          "refId": "C"
+        }
+      ]
+    }
+  ]
+}
