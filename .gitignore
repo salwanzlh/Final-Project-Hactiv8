@@ -35,9 +35,19 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 
-# Data files (local only)
-backend/db/customer_history.json
-backend/db/sales_history.jsonl
+# coretan
+coretan
+
+# Accidental brace-expansion artifact
+backend/{routers,services,models,db}/
+
+# Test files
+test_*.py
+conftest.py
+
+# QA
+QA_*.pdf
+generate_qa_pdf.py
 
 # Test output
 *.csv
