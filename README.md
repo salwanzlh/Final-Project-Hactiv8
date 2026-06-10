@@ -51,7 +51,7 @@ Real-time AI assistant untuk sales mobil Mitsubishi. Sistem mendengarkan percaka
 
 ## Cara Menjalankan
 
-### Prasyarat
+### Requirements
 
 - Python 3.12+
 - Node.js 18+
